@@ -65,6 +65,13 @@ static int fcp_devmap_read_from_device(struct fcp_device *device) {
     return encoded_size;
   }
 
+  /* The device may report a size that includes a trailing null
+   * terminator; OpenSSL >= 3.6.2 rejects null bytes in the base64
+   * stream, so strip them before decoding.
+   */
+  while (encoded_size > 0 && !encoded_buf[encoded_size - 1])
+    encoded_size--;
+
   /* base64 decode */
   uint8_t *decoded_buf = malloc(EVP_DECODE_LENGTH(encoded_size));
   if (!decoded_buf) {
