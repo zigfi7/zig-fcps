@@ -35,6 +35,9 @@ CFLAGS += -DVERSION=\"$(VERSION)\"
 CFLAGS += -DDATADIR=\"$(DATADIR_PATH)\"
 CFLAGS += -Wno-error=deprecated-declarations
 
+CXXFLAGS ?= -ggdb -fno-omit-frame-pointer -O2
+CXXFLAGS += -Wall -Werror -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -std=c++17
+
 PKG_CONFIG=pkg-config
 
 CFLAGS += $(shell $(PKG_CONFIG) --cflags alsa)
@@ -49,25 +52,29 @@ SERVER_CFLAGS := $(shell $(PKG_CONFIG) --cflags libsystemd)
 SERVER_LDFLAGS := $(shell $(PKG_CONFIG) --libs libsystemd)
 
 COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
+COMPILE.cpp = $(CXX) $(DEPFLAGS) $(CXXFLAGS) -c
 
 # Define source files for each target
-CLIENT_SRCS := $(sort $(wildcard client/*.c))
+CLIENT_SRCS := $(filter-out client/fcp-mix.c,$(sort $(wildcard client/*.c)))
 SERVER_SRCS := $(sort $(wildcard server/*.c))
 SHARED_SRCS := $(sort $(wildcard shared/*.c))
+API_SERVER_SRCS := $(sort $(wildcard api-server/*.cpp))
 
 # Define object files
 CLIENT_OBJS := $(patsubst %.c,%.o,$(CLIENT_SRCS))
 SERVER_OBJS := $(patsubst %.c,%.o,$(SERVER_SRCS))
 SHARED_OBJS := $(patsubst %.c,%.o,$(SHARED_SRCS))
+API_SERVER_OBJS := $(patsubst %.cpp,%.o,$(API_SERVER_SRCS))
 
 # Define dependency directories needed
 CLIENT_DEPDIRS := $(addprefix $(DEPDIR)/,$(dir $(CLIENT_SRCS)))
 SERVER_DEPDIRS := $(addprefix $(DEPDIR)/,$(dir $(SERVER_SRCS)))
 SHARED_DEPDIRS := $(addprefix $(DEPDIR)/,$(dir $(SHARED_SRCS)))
-DEPDIRS := $(sort $(CLIENT_DEPDIRS) $(SERVER_DEPDIRS) $(SHARED_DEPDIRS))
+API_SERVER_DEPDIRS := $(addprefix $(DEPDIR)/,$(dir $(API_SERVER_SRCS)))
+DEPDIRS := $(sort $(CLIENT_DEPDIRS) $(SERVER_DEPDIRS) $(SHARED_DEPDIRS) $(API_SERVER_DEPDIRS))
 
 # Define targets
-TARGETS := fcp-tool fcp-server fcp-mix systemd/fcp-server@.service
+TARGETS := fcp-tool fcp-server fcp-mix zig-fcps-api systemd/fcp-server@.service
 
 all: $(TARGETS)
 
@@ -79,6 +86,7 @@ $(DEPDIRS):
 CLIENT_DEPS := $(CLIENT_SRCS:%.c=$(DEPDIR)/%.d)
 SERVER_DEPS := $(SERVER_SRCS:%.c=$(DEPDIR)/%.d)
 SHARED_DEPS := $(SHARED_SRCS:%.c=$(DEPDIR)/%.d)
+API_SERVER_DEPS := $(API_SERVER_SRCS:%.cpp=$(DEPDIR)/%.d)
 
 # Update COMPILE.c for server files
 $(SERVER_OBJS): COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) $(SERVER_CFLAGS) -c
@@ -87,13 +95,18 @@ $(SERVER_OBJS): COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) $(SERVER_CFLAGS) -c
 %.o: %.c | $(DEPDIRS)
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
+%.o: %.cpp | $(DEPDIRS)
+	$(COMPILE.cpp) $(OUTPUT_OPTION) $<
+
 $(CLIENT_DEPS):
 $(SERVER_DEPS):
 $(SHARED_DEPS):
+$(API_SERVER_DEPS):
 
 -include $(wildcard $(CLIENT_DEPS))
 -include $(wildcard $(SERVER_DEPS))
 -include $(wildcard $(SHARED_DEPS))
+-include $(wildcard $(API_SERVER_DEPS))
 
 fcp-tool: $(CLIENT_OBJS) $(SHARED_OBJS)
 	cc -o $@ $(CLIENT_OBJS) $(SHARED_OBJS) ${LDFLAGS}
@@ -106,8 +119,11 @@ fcp-mix: client/fcp-mix.c
 fcp-server: $(SERVER_OBJS)
 	cc -o $@ $(SERVER_OBJS) ${LDFLAGS} ${SERVER_LDFLAGS}
 
+zig-fcps-api: $(API_SERVER_OBJS)
+	$(CXX) -o $@ $(API_SERVER_OBJS) -pthread -pie
+
 clean: depclean
-	rm -f $(TARGETS) $(CLIENT_OBJS) $(SERVER_OBJS) $(SHARED_OBJS) systemd/fcp-server@.service
+	rm -f $(TARGETS) $(CLIENT_OBJS) $(SERVER_OBJS) $(SHARED_OBJS) $(API_SERVER_OBJS) systemd/fcp-server@.service
 
 depclean:
 	rm -rf $(DEPDIR)
@@ -122,9 +138,11 @@ install-bin:
 	install -m 755 fcp-tool $(BINDIR)
 	install -m 755 fcp-server $(BINDIR)
 	install -m 755 fcp-mix $(BINDIR)
+	install -m 755 zig-fcps-api $(BINDIR)
 
 install-service: systemd/fcp-server@.service
 	install -D -m 644 $< $(SYSTEMD_DIR)/fcp-server@.service
+	install -D -m 644 systemd/zig-fcps-api.service $(SYSTEMD_DIR)/zig-fcps-api.service
 	@echo "Run 'sudo systemctl daemon-reload' to reload systemd"
 
 install-rules:
@@ -139,7 +157,9 @@ uninstall:
 	rm -f $(BINDIR)/fcp-tool
 	rm -f $(BINDIR)/fcp-server
 	rm -f $(BINDIR)/fcp-mix
+	rm -f $(BINDIR)/zig-fcps-api
 	rm -f $(SYSTEMD_DIR)/fcp-server@.service
+	rm -f $(SYSTEMD_DIR)/zig-fcps-api.service
 	rm -f $(UDEV_DIR)/99-fcp.rules
 	rm -rf $(DATADIR)
 
@@ -161,8 +181,8 @@ deb: all
 	         deb-build/usr/lib/udev/rules.d \
 	         deb-build/usr/share/fcp-server \
 	         deb-build/usr/share/doc/$(NAME)
-	cp fcp-tool fcp-server deb-build/usr/bin/
-	cp systemd/fcp-server@.service deb-build/usr/lib/systemd/system/
+	cp fcp-tool fcp-server zig-fcps-api deb-build/usr/bin/
+	cp systemd/fcp-server@.service systemd/zig-fcps-api.service deb-build/usr/lib/systemd/system/
 	cp udev/99-fcp.rules deb-build/usr/lib/udev/rules.d/
 	cp data/fcp-alsa-map-*.json deb-build/usr/share/fcp-server/
 	cp debian/copyright deb-build/usr/share/doc/$(NAME)/
@@ -177,7 +197,7 @@ help:
 	@echo "fcp-support"
 	@echo
 	@echo "This Makefile knows about:"
-	@echo "  make           - build fcp-server and fcp-tool"
+	@echo "  make           - build fcp-server, fcp-tool, fcp-mix, zig-fcps-api"
 	@echo "  make install   - install everything (binaries, service, rules, data)"
 	@echo "  make uninstall - uninstall everything"
 	@echo "  make clean     - remove build files"
