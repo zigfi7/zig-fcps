@@ -67,7 +67,7 @@ SHARED_DEPDIRS := $(addprefix $(DEPDIR)/,$(dir $(SHARED_SRCS)))
 DEPDIRS := $(sort $(CLIENT_DEPDIRS) $(SERVER_DEPDIRS) $(SHARED_DEPDIRS))
 
 # Define targets
-TARGETS := fcp-tool fcp-server systemd/fcp-server@.service
+TARGETS := fcp-tool fcp-server fcp-mix systemd/fcp-server@.service
 
 all: $(TARGETS)
 
@@ -98,6 +98,11 @@ $(SHARED_DEPS):
 fcp-tool: $(CLIENT_OBJS) $(SHARED_OBJS)
 	cc -o $@ $(CLIENT_OBJS) $(SHARED_OBJS) ${LDFLAGS}
 
+# Standalone CLI mixer/control tool (uses ALSA controls created by fcp-server).
+# Built directly (single .c, doesn't share fcp-tool object set).
+fcp-mix: client/fcp-mix.c
+	cc $(CFLAGS) -o $@ $< -lasound -ljson-c -lm
+
 fcp-server: $(SERVER_OBJS)
 	cc -o $@ $(SERVER_OBJS) ${LDFLAGS} ${SERVER_LDFLAGS}
 
@@ -116,6 +121,7 @@ install-bin:
 	install -d $(BINDIR)
 	install -m 755 fcp-tool $(BINDIR)
 	install -m 755 fcp-server $(BINDIR)
+	install -m 755 fcp-mix $(BINDIR)
 
 install-service: systemd/fcp-server@.service
 	install -D -m 644 $< $(SYSTEMD_DIR)/fcp-server@.service
@@ -132,6 +138,7 @@ install-data:
 uninstall:
 	rm -f $(BINDIR)/fcp-tool
 	rm -f $(BINDIR)/fcp-server
+	rm -f $(BINDIR)/fcp-mix
 	rm -f $(SYSTEMD_DIR)/fcp-server@.service
 	rm -f $(UDEV_DIR)/99-fcp.rules
 	rm -rf $(DATADIR)
