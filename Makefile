@@ -78,7 +78,7 @@ API_SERVER_DEPDIRS := $(addprefix $(DEPDIR)/,$(dir $(API_SERVER_SRCS)))
 DEPDIRS := $(sort $(CLIENT_DEPDIRS) $(SERVER_DEPDIRS) $(SHARED_DEPDIRS) $(API_SERVER_DEPDIRS))
 
 # Define targets
-TARGETS := fcp-tool fcp-server fcp-mix zig-fcps-api systemd/fcp-server@.service
+TARGETS := fcp-tool fcp-server fcp-mix zig-fcps-api systemd/fcp-server@.service systemd/zig-fcps-api.service
 
 all: $(TARGETS)
 
@@ -127,12 +127,15 @@ zig-fcps-api: $(API_SERVER_OBJS)
 	$(CXX) -o $@ $(API_SERVER_OBJS) -pthread -pie
 
 clean: depclean
-	rm -f $(TARGETS) $(CLIENT_OBJS) $(SERVER_OBJS) $(SHARED_OBJS) $(API_SERVER_OBJS) systemd/fcp-server@.service
+	rm -f $(TARGETS) $(CLIENT_OBJS) $(SERVER_OBJS) $(SHARED_OBJS) $(API_SERVER_OBJS)
 
 depclean:
 	rm -rf $(DEPDIR)
 
 systemd/fcp-server@.service: systemd/fcp-server@.service.template
+	sed 's|@PREFIX@|$(PREFIX)|g' $< > $@
+
+systemd/zig-fcps-api.service: systemd/zig-fcps-api.service.template
 	sed 's|@PREFIX@|$(PREFIX)|g' $< > $@
 
 install: all install-bin install-service install-rules install-data
@@ -144,8 +147,8 @@ install-bin:
 	install -m 755 fcp-mix $(BINDIR)
 	install -m 755 zig-fcps-api $(BINDIR)
 
-install-service: systemd/fcp-server@.service
-	install -D -m 644 $< $(SYSTEMD_DIR)/fcp-server@.service
+install-service: systemd/fcp-server@.service systemd/zig-fcps-api.service
+	install -D -m 644 systemd/fcp-server@.service $(SYSTEMD_DIR)/fcp-server@.service
 	install -D -m 644 systemd/zig-fcps-api.service $(SYSTEMD_DIR)/zig-fcps-api.service
 	@echo "Run 'sudo systemctl daemon-reload' to reload systemd"
 

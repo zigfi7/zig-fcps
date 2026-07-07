@@ -5,3 +5,4 @@
 /systemd/fcp-server@.service
 /fcp-mix
 /zig-fcps-api
+/systemd/zig-fcps-api.service
