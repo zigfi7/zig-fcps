@@ -24,6 +24,8 @@ SYSTEMD_DIR := $(DESTDIR)$(PREFIX)/lib/systemd/system
 UDEV_DIR := $(DESTDIR)$(PREFIX)/lib/udev/rules.d
 DATADIR_PATH := $(PREFIX)/share/fcp-server
 DATADIR := $(DESTDIR)$(DATADIR_PATH)
+API_UI_DATADIR_PATH := $(PREFIX)/share/zig-fcps-api/ui
+API_UI_DATADIR := $(DESTDIR)$(API_UI_DATADIR_PATH)
 
 DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$(*D)/$(*F).d
@@ -37,6 +39,7 @@ CFLAGS += -Wno-error=deprecated-declarations
 
 CXXFLAGS ?= -ggdb -fno-omit-frame-pointer -O2
 CXXFLAGS += -Wall -Werror -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -std=c++17
+CXXFLAGS += -DAPI_UI_DATADIR=\"$(API_UI_DATADIR_PATH)\"
 
 PKG_CONFIG=pkg-config
 
@@ -152,6 +155,8 @@ install-rules:
 install-data:
 	install -d $(DATADIR)
 	install -m 644 data/fcp-alsa-map-*.json $(DATADIR)/
+	install -d $(API_UI_DATADIR)
+	install -m 644 api-server/ui/index.html api-server/ui/style.css api-server/ui/app.js $(API_UI_DATADIR)/
 
 uninstall:
 	rm -f $(BINDIR)/fcp-tool
@@ -162,6 +167,7 @@ uninstall:
 	rm -f $(SYSTEMD_DIR)/zig-fcps-api.service
 	rm -f $(UDEV_DIR)/99-fcp.rules
 	rm -rf $(DATADIR)
+	rm -rf $(API_UI_DATADIR)
 
 tar: all
 	mkdir -p $(TAR_DIR)

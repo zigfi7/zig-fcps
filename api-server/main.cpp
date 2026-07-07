@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <functional>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
@@ -24,6 +25,10 @@
 #include <vector>
 
 using json = nlohmann::json;
+
+#ifndef API_UI_DATADIR
+#define API_UI_DATADIR "/usr/local/share/zig-fcps-api/ui"
+#endif
 
 namespace {
 
@@ -47,6 +52,14 @@ struct ApiError : public std::runtime_error {
 
 AppConfig g_config;
 std::mutex g_fcp_mutex;
+
+std::string read_text_file(const std::string &path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) throw ApiError(500, "could not read file: " + path);
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
 
 std::string trim_copy(const std::string &input) {
     const auto first = input.find_first_not_of(" \t\r\n");
@@ -525,6 +538,21 @@ int main(int argc, char **argv) {
         server.set_write_timeout(30, 0);
         server.set_idle_interval(30, 0);
         server.set_payload_max_length(1024 * 1024);
+
+        if (!server.set_mount_point("/ui", API_UI_DATADIR)) {
+            std::cerr << "warning: could not mount UI directory " << API_UI_DATADIR << std::endl;
+        }
+
+
+        server.Get("/", [](const httplib::Request &, httplib::Response &res) {
+            try {
+                res.set_content(read_text_file(std::string(API_UI_DATADIR) + "/index.html"), "text/html");
+            } catch (const ApiError &ex) {
+                send_json(res, ex.status, api_error_json(ex.what()));
+            } catch (const std::exception &ex) {
+                send_json(res, 500, api_error_json(ex.what()));
+            }
+        });
 
         server.Get("/health", [](const httplib::Request &, httplib::Response &res) {
             try {

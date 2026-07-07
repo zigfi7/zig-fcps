@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>zig-fcps Scarlett Monitor</title>
+  <link rel="stylesheet" href="/ui/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">zig-fcps-api</p>
+      <h1>Scarlett Monitor</h1>
+    </div>
+    <div class="header-actions">
+      <span id="status" class="status">loading</span>
+      <button id="snapshotButton" type="button">Download snapshot</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel meter-panel" aria-labelledby="meter-title">
+      <div class="section-heading">
+        <h2 id="meter-title">Live meter</h2>
+        <span id="meterMeta" class="meta">waiting</span>
+      </div>
+      <div class="scale" aria-hidden="true"><span>-60</span><span>-48</span><span>-36</span><span>-24</span><span>-12</span><span>0 dB</span></div>
+      <div id="meters" class="meters"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="controls-title">
+      <div class="section-heading">
+        <h2 id="controls-title">Controls</h2>
+        <span id="controlsMeta" class="meta">loading</span>
+      </div>
+      <div id="controls" class="controls"></div>
+    </section>
+  </main>
+
+  <script src="/ui/app.js" defer></script>
+</body>
+</html>
