@@ -40,6 +40,7 @@ CFLAGS += -Wno-error=deprecated-declarations
 CXXFLAGS ?= -ggdb -fno-omit-frame-pointer -O2
 CXXFLAGS += -Wall -Werror -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -std=c++17
 CXXFLAGS += -DAPI_UI_DATADIR=\"$(API_UI_DATADIR_PATH)\"
+CXXFLAGS += -DFCP_MIX_PATH=\"$(PREFIX)/bin/fcp-mix\"
 
 PKG_CONFIG=pkg-config
 

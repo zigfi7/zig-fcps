@@ -30,13 +30,17 @@ using json = nlohmann::json;
 #define API_UI_DATADIR "/usr/local/share/zig-fcps-api/ui"
 #endif
 
+#ifndef FCP_MIX_PATH
+#define FCP_MIX_PATH "/usr/local/bin/fcp-mix"
+#endif
+
 namespace {
 
 struct AppConfig {
     std::string bind_host = "0.0.0.0";
     int port = 8677;
     std::optional<int> card;
-    std::string fcp_mix_path = "/usr/local/bin/fcp-mix";
+    std::string fcp_mix_path = FCP_MIX_PATH;
 };
 
 struct CommandResult {
