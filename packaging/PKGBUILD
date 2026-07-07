@@ -22,6 +22,7 @@ pkgver() {
 
 build() {
     cd zig-fcps
+    make clean
     make PREFIX=/usr
 }
 
