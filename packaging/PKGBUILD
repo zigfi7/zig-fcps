@@ -1,0 +1,31 @@
+# Maintainer: zigfi <zigfi@zigfi.uk>
+
+pkgname=zig-fcps-git
+pkgver=20260707.r4.fdefaf8
+pkgrel=1
+pkgdesc='Focusrite Scarlett 4th Gen driver-support tooling with ziglab API additions'
+arch=('aarch64')
+url='https://github.com/zigfi7/zig-fcps'
+license=('GPL-2.0-or-later')
+depends=('alsa-lib' 'openssl' 'zlib' 'json-c' 'systemd-libs' 'cpp-httplib' 'nlohmann-json')
+makedepends=('gcc' 'systemd' 'pkgconf' 'git')
+provides=('fcp-support')
+conflicts=('fcp-support')
+install=zig-fcps-git.install
+source=('git+ssh://git@github.com/zigfi7/zig-fcps.git#branch=master')
+sha256sums=('SKIP')
+
+pkgver() {
+    cd zig-fcps
+    printf "%s.r%s.%s" "$(git log -1 --format=%cd --date=format:%Y%m%d)" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+build() {
+    cd zig-fcps
+    make PREFIX=/usr
+}
+
+package() {
+    cd zig-fcps
+    make PREFIX=/usr DESTDIR="$pkgdir" install
+}

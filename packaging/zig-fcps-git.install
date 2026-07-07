@@ -1,0 +1,17 @@
+post_install() {
+    systemctl daemon-reload
+    udevadm control --reload-rules
+    printf '%s\n' 'zig-fcps-git installed. Enable per-host services explicitly, e.g.:'
+    printf '%s\n' '  systemctl enable --now fcp-server@0.service'
+    printf '%s\n' '  systemctl enable --now zig-fcps-api.service'
+}
+
+post_upgrade() {
+    systemctl daemon-reload
+    udevadm control --reload-rules
+}
+
+post_remove() {
+    systemctl daemon-reload
+    udevadm control --reload-rules
+}
